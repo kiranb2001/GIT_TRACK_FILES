@@ -1,4 +1,4 @@
-WITH trip_metrics_closed_denominator AS (
+kiran:WITH trip_metrics_closed_denominator AS (
     SELECT tripstatus, partnercountryid, partnernetworkid, overallbucketid, roamertype,
         overallbucketidexcludingsor, regbucketid, regsuccessratiobucketid, reglatencybucketid,
         regbucketidexcludingsor, regsuccessratiobucketidexcludingsor, reglatencybucketidexcludingsor,
