@@ -1,0 +1,387 @@
+select distinct bintime, cast(from_unixtime(bintime) AT TIME ZONE 'UTC' AS varchar) AS bindate from map_transaction_model_CRM where roamertype=2 group by bintime order by bindate asc;
+
+------ TRIP METRICS --------
+
+*** Hourly ***
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+val tripmetrics = spark.read.orc("/user/roamware/output/tripmetrics/roamertype=2/tripstatus=2/");
+val tripmetricsschema = tripmetrics.schema;
+ 
+for( z <- 0 to 10)  {
+val tripmnew = tripmetrics.withColumn("networktripid", col("networktripid")-z*3600000L).withColumn("countrytripid", col("countrytripid")-z*3600000L).withColumn("globaltripid", col("globaltripid")-z*3600000L).withColumn("tripstarttime", col("tripstarttime")-z*3600000L).withColumn("lasteventtime", col("lasteventtime")-z*3600000L).withColumn("tripendtime", when(col("tripendtime").isNotNull,col("tripendtime")-1*3600000L).otherwise(col("tripendtime"))).withColumn("bintime", col("bintime") -z * 3600).withColumn("imsi",lit(col("imsi")-(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(tripmnew.rdd,tripmetricsschema)
+result.write.mode("append").partitionBy("triptype","imsimodulo","bintime").format("orc").save("/user/roamware/output/crm_tripmetrics/roamertype=2/tripstatus=2/")
+}
+
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+val tripmetrics = spark.read.orc("/user/roamware/output/tripmetrics/roamertype=2/tripstatus=2/");
+val tripmetricsschema = tripmetrics.schema;
+ 
+for( z <- 1 to 13)  {
+val tripmnew = tripmetrics.withColumn("networktripid", col("networktripid")+z*3600000L).withColumn("countrytripid", col("countrytripid")+z*3600000L).withColumn("globaltripid", col("globaltripid")+z*3600000L).withColumn("tripstarttime", col("tripstarttime")+z*3600000L).withColumn("lasteventtime", col("lasteventtime")+z*3600000L).withColumn("tripendtime", when(col("tripendtime").isNotNull,col("tripendtime")+1*3600000L).otherwise(col("tripendtime"))).withColumn("bintime", col("bintime") +z * 3600).withColumn("imsi",lit(col("imsi")+(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(tripmnew.rdd,tripmetricsschema)
+result.write.mode("append").partitionBy("triptype","imsimodulo","bintime").format("orc").save("/user/roamware/output/crm_tripmetrics/roamertype=2/tripstatus=2/")
+}
+
+
+**** Daily *****
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val tripmetrics = spark.read.orc("/user/roamware/output/crm_tripmetrics/roamertype=2/tripstatus=2/");
+val tripmetricsschema = tripmetrics.schema;
+for( z <- 0 to 4)  
+{
+val tripmnew = tripmetrics.withColumn("networktripid", col("networktripid")+z*86400000L).withColumn("countrytripid", col("countrytripid")+z*86400000L).withColumn("globaltripid", col("globaltripid")+z*86400000L).withColumn("tripstarttime", col("tripstarttime")+z*86400000L).withColumn("lasteventtime", col("lasteventtime")+z*86400000L).withColumn("tripendtime", when(col("tripendtime").isNotNull,col("tripendtime")+1*86400000L).otherwise(col("tripendtime"))).withColumn("imsi",lit(col("imsi")+(z*1)).cast("Long")).withColumn("bintime", col("bintime")+z*86400).withColumn("eventdate", date_add(to_date(col("eventdate"), "yyyy-MM-dd"), z).cast(StringType));
+ 
+val result = spark.createDataFrame(tripmnew.rdd,tripmetricsschema)
+result.write.mode("append").partitionBy("triptype","imsimodulo","bintime").format("orc").save("/user/roamware/output/crm_kiran/roamertype=2/tripstatus=2/")
+}
+
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val tripmetrics = spark.read.orc("/user/roamware/output/crm_tripmetrics/roamertype=2/tripstatus=2/");
+val tripmetricsschema = tripmetrics.schema;
+for( z <- 1 to 25)  
+{
+val tripmnew = tripmetrics.withColumn("networktripid", col("networktripid")-z*86400000L).withColumn("countrytripid", col("countrytripid")-z*86400000L).withColumn("globaltripid", col("globaltripid")-z*86400000L).withColumn("tripstarttime", col("tripstarttime")-z*86400000L).withColumn("lasteventtime", col("lasteventtime")-z*86400000L).withColumn("tripendtime", when(col("tripendtime").isNotNull,col("tripendtime")-1*86400000L).otherwise(col("tripendtime"))).withColumn("imsi",lit(col("imsi")-(z*1)).cast("Long")).withColumn("bintime", col("bintime")-z*86400).withColumn("eventdate", date_sub(to_date(col("eventdate"), "yyyy-MM-dd"), z).cast(StringType));
+ 
+val result = spark.createDataFrame(tripmnew.rdd,tripmetricsschema)
+result.write.mode("append").partitionBy("triptype","imsimodulo","bintime").format("orc").save("/user/roamware/output/crm_kiran/roamertype=2/tripstatus=2/")
+}
+
+----- NQS DLY -----
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val nqs = spark.read.orc("/user/roamware/output/rcem/nqs/rcem_nqs_dly/usecasename=rcem_nqs_dly_03_May/finalcubebintime=01011970/roamertype=2");
+ 
+val nqsschema = nqs.schema;
+ 
+for( z <- 0 to 4)  {
+val nqsnew = nqs.withColumn("eventdate", date_add(to_date(col("eventdate"), "yyyy-MM-dd"), z));
+ 
+val result = spark.createDataFrame(nqsnew.rdd,nqsschema);
+result.write.mode("append").partitionBy("eventdate","serviceid").format("orc").save("/user/roamware/output/rcem/nqs/rcem_nqs_dly_performance/usecasename=rcem_nqs_dly_03_May/finalcubebintime=01011970/roamertype=2")}
+
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val nqs = spark.read.orc("/user/roamware/output/rcem/nqs/rcem_nqs_dly/usecasename=rcem_nqs_dly_03_May/finalcubebintime=01011970/roamertype=2");
+ 
+val nqsschema = nqs.schema;
+ 
+for( z <- 1 to 25)  {
+val nqsnew = nqs.withColumn("eventdate", date_sub(to_date(col("eventdate"), "yyyy-MM-dd"), z));
+ 
+val result = spark.createDataFrame(nqsnew.rdd,nqsschema);
+result.write.mode("append").partitionBy("eventdate","serviceid").format("orc").save("/user/roamware/output/rcem/nqs/rcem_nqs_dly_performance/usecasename=rcem_nqs_dly_03_May/finalcubebintime=01011970/roamertype=2")
+}
+
+----- CRM NQS  DLY -------
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val nqs = spark.read.orc("/user/roamware/output/rcem/nqs/rcem_nqs_crm_dly/usecasename=rcem_nqs_dly_03_May/finalcubebintime=01011970/roamertype=2");
+ 
+val nqsschema = nqs.schema;
+ 
+for( z <- 0 to 4)  {
+val nqsnew = nqs.withColumn("eventdate", date_add(to_date(col("eventdate"), "yyyy-MM-dd"), z));
+ 
+val result = spark.createDataFrame(nqsnew.rdd,nqsschema);
+result.write.mode("append").partitionBy("eventdate","partnercountryid").format("orc").save("/user/roamware/output/rcem/nqs/rcem_nqs_crm_dly_performance/")
+}
+
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val nqs = spark.read.orc("/user/roamware/output/rcem/nqs/rcem_nqs_crm_dly/usecasename=rcem_nqs_dly_03_May/finalcubebintime=01011970/roamertype=2");
+ 
+val nqsschema = nqs.schema;
+ 
+for( z <- 1 to 25)  {
+val nqsnew = nqs.withColumn("eventdate", date_sub(to_date(col("eventdate"), "yyyy-MM-dd"), z));
+ 
+val result = spark.createDataFrame(nqsnew.rdd,nqsschema);
+result.write.mode("append").partitionBy("eventdate","partnercountryid").format("orc").save("/user/roamware/output/rcem/nqs/rcem_nqs_crm_dly_performance/")
+}
+
+
+------------ MAP ---------------
+
+**** DAILY ***** 
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val map = spark.read.orc("/user/roamware/output/CRM/map_day/roamertype=2/");
+val mapschema = map.schema;
+ 
+for( z <- 0 to 4)  {
+val mapnew = map.withColumn("starttime", col("starttime")+z*86400000L).withColumn("endtime", col("endtime")+z*86400000L).withColumn("eventtime", col("eventtime")+z*86400000L).withColumn("bintime", col("bintime") +z * 86400).withColumn("seqnumber", col("seqnumber") +z * 86400).withColumn("txnid", (col("txnid") + z * 86400000L).cast(StringType)).withColumn("imsi",lit(col("imsi")+(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(mapnew.rdd,mapschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/map_performance/roamertype=2/")
+}
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val map = spark.read.orc("/user/roamware/output/CRM/map_day/roamertype=2/");
+val mapschema = map.schema;
+ 
+for( z <- 1 to 25)  {
+val mapnew = map.withColumn("starttime", col("starttime")-z*86400000L).withColumn("endtime", col("endtime")-z*86400000L).withColumn("eventtime", col("eventtime")-z*86400000L).withColumn("bintime", col("bintime") -z * 86400).withColumn("seqnumber", col("seqnumber") -z * 86400).withColumn("txnid", (col("txnid") - z * 86400000L).cast(StringType)).withColumn("imsi",lit(col("imsi")-(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(mapnew.rdd,mapschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/map_performance/roamertype=2/")
+}
+
+***** HOURLY ******
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val map = spark.read.orc("/user/roamware/output/SSISQI/map/roamertype=2/");
+val mapschema = map.schema;
+ 
+for( z <- 1 to 13)  {
+val mapnew = map.withColumn("starttime", col("starttime")+z*3600000L).withColumn("endtime", col("endtime")+z*3600000L).withColumn("eventtime", col("eventtime")+z*3600000L).withColumn("bintime", col("bintime") +z * 3600).withColumn("seqnumber", col("seqnumber") +z * 3600).withColumn("txnid", (col("txnid") + z * 3600000L).cast(StringType)).withColumn("imsi",lit(col("imsi")+(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(mapnew.rdd,mapschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/map_day/roamertype=2/")
+}
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val map = spark.read.orc("/user/roamware/output/SSISQI/map/roamertype=2/");
+val mapschema = map.schema;
+ 
+for( z <- 0 to 10)  {
+val mapnew = map.withColumn("starttime", col("starttime")-z*3600000L).withColumn("endtime", col("endtime")-z*3600000L).withColumn("eventtime", col("eventtime")-z*3600000L).withColumn("bintime", col("bintime") -z * 3600).withColumn("seqnumber", col("seqnumber") -z * 3600).withColumn("txnid", (col("txnid") - z * 3600000L).cast(StringType)).withColumn("imsi",lit(col("imsi")-(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(mapnew.rdd,mapschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/map_day/roamertype=2/")
+}
+
+----- DIAMETER --------
+
+**** DAILY ***** 
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val diameter = spark.read.orc("/user/roamware/output/CRM/diameter/roamertype=2/");
+val diameterschema = diameter.schema;
+ 
+for( z <- 0 to 4)  {
+val diameternew = diameter.withColumn("starttime", col("starttime")+z*86400000L).withColumn("endtime", col("endtime")+z*86400000L).withColumn("eventtime", col("eventtime")+z*86400000L).withColumn("bintime", col("bintime") +z * 86400).withColumn("seqnumber", col("seqnumber") +z * 86400).withColumn("txnid", (col("txnid") + z * 86400000L).cast(StringType)).withColumn("imsi",lit(col("imsi")+(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(diameternew.rdd,diameterschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/diameter_performance/roamertype=2/")
+}
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val diameter = spark.read.orc("/user/roamware/output/CRM/diameter/roamertype=2/");
+val diameterschema = diameter.schema;
+ 
+for( z <- 1 to 25)  {
+val diameternew = diameter.withColumn("starttime", col("starttime")-z*86400000L).withColumn("endtime", col("endtime")-z*86400000L).withColumn("eventtime", col("eventtime")-z*86400000L).withColumn("bintime", col("bintime") -z * 86400).withColumn("seqnumber", col("seqnumber") -z * 86400).withColumn("txnid", (col("txnid") - z * 86400000L).cast(StringType)).withColumn("imsi",lit(col("imsi")-(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(diameternew.rdd,diameterschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/diameter_performance/roamertype=2/")
+}
+
+
+***** HOURLY ******
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val diameter = spark.read.orc("/user/roamware/output/SSISQI/diameter/roamertype=2/");
+val diameterschema = diameter.schema;
+ 
+for( z <- 1 to 13)  {
+val diameternew = diameter.withColumn("starttime", col("starttime")+z*3600000L).withColumn("endtime", col("endtime")+z*3600000L).withColumn("eventtime", col("eventtime")+z*3600000L).withColumn("bintime", col("bintime") +z * 3600).withColumn("seqnumber", col("seqnumber") +z * 3600).withColumn("txnid", (col("txnid") + z * 3600000L).cast(StringType)).withColumn("imsi",lit(col("imsi")+(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(diameternew.rdd,diameterschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/diameter/roamertype=2/")
+}
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val diameter = spark.read.orc("/user/roamware/output/SSISQI/diameter/roamertype=2/");
+val diameterschema = diameter.schema;
+ 
+for( z <- 0 to 10)  {
+val diameternew = diameter.withColumn("starttime", col("starttime")-z*3600000L).withColumn("endtime", col("endtime")-z*3600000L).withColumn("eventtime", col("eventtime")-z*3600000L).withColumn("bintime", col("bintime") -z * 3600).withColumn("seqnumber", col("seqnumber") -z * 3600).withColumn("txnid", (col("txnid") - z * 3600000L).cast(StringType)).withColumn("imsi",lit(col("imsi")-(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(diameternew.rdd,diameterschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/diameter/roamertype=2/")
+}
+
+
+---- CAP -----
+
+---- Hourly ---
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val cap = spark.read.orc("/user/roamware/output/SSISQI/cap/roamertype=2/");
+val capschema = cap.schema;
+ 
+for( z <- 1 to 110)  {
+val capnew = cap.withColumn("starttime", col("starttime")+z*3600000L).withColumn("endtime", col("endtime")+z*3600000L).withColumn("eventtime", col("eventtime")+z*3600000L).withColumn("bintime", col("bintime") +z * 3600).withColumn("seqnumber", col("seqnumber") +z * 3600).withColumn("txnid", (col("txnid") + z * 3600000L).cast(StringType)).withColumn("imsi",lit(col("imsi")+(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(capnew.rdd,capschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/cap/roamertype=2/")
+}
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val cap = spark.read.orc("/user/roamware/output/SSISQI/cap/roamertype=2/");
+val capschema = cap.schema;
+ 
+for( z <- 1 to 608)  {
+val capnew = cap.withColumn("starttime", col("starttime")-z*3600000L).withColumn("endtime", col("endtime")-z*3600000L).withColumn("eventtime", col("eventtime")-z*3600000L).withColumn("bintime", col("bintime") -z * 3600).withColumn("seqnumber", col("seqnumber") -z * 3600).withColumn("txnid", (col("txnid") - z * 3600000L).cast(StringType)).withColumn("imsi",lit(col("imsi")-(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(capnew.rdd,capschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/cap/roamertype=2/")
+}
+
+--- Daily -----
+
+
+----- GTP SESSION MODEL --------
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val gtpsessions = spark.read.orc("/user/roamware/output/SSISQI/gtpsessions/roamertype=2/");
+val gtpsessionsschema = gtpsessions.schema;
+ 
+for( z <- 1 to 110)  {
+val gtpsessionsnew = gtpsessions.withColumn("starttime", col("starttime")+z*3600000L).withColumn("endtime", col("endtime")+z*3600000L).withColumn("eventtime", col("eventtime")+z*3600000L).withColumn("bintime", col("bintime") +z * 3600).withColumn("seqnumber", col("seqnumber") +z * 3600).withColumn("txnid", (col("txnid") + z * 3600000L).cast(StringType)).withColumn("imsi",lit(col("imsi")+(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(gtpsessionsnew.rdd,gtpsessionsschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/gtpsessions/roamertype=2/")
+}
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val gtpsessions = spark.read.orc("/user/roamware/output/SSISQI/gtpsessions/roamertype=2/");
+val gtpsessionsschema = gtpsessions.schema;
+ 
+for( z <- 0 to 608)  {
+val gtpsessionsnew = gtpsessions.withColumn("starttime", col("starttime")-z*3600000L).withColumn("endtime", col("endtime")-z*3600000L).withColumn("eventtime", col("eventtime")-z*3600000L).withColumn("bintime", col("bintime") -z * 3600).withColumn("seqnumber", col("seqnumber") -z * 3600).withColumn("txnid", (col("txnid") - z * 3600000L).cast(StringType)).withColumn("imsi",lit(col("imsi")-(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(gtpsessionsnew.rdd,gtpsessionsschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/gtpsessions/roamertype=2/")
+}
+
+---- GTP Usage Model -----
+
+**** Hourly ***
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val gtpusage = spark.read.orc("/user/roamware/output/SSISQI/gtp/usage/roamertype=2/");
+val gtpusageschema = gtpusage.schema;
+ 
+for( z <- 1 to 13)  {
+val gtpusagenew = gtpusage.withColumn("starttime", col("starttime")+z*3600000L).withColumn("endtime", col("endtime")+z*3600000L).withColumn("eventtime", col("eventtime")+z*3600000L).withColumn("bintime", col("bintime") +z * 3600).withColumn("imsi",lit(col("imsi")+(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(gtpusagenew.rdd,gtpusageschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/gtpusage/roamertype=2/")
+}
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val gtpusage = spark.read.orc("/user/roamware/output/SSISQI/gtp/usage/roamertype=2/");
+val gtpusageschema = gtpusage.schema;
+ 
+for( z <- 0 to 10)  {
+val gtpusagenew = gtpusage.withColumn("starttime", col("starttime")-z*3600000L).withColumn("endtime", col("endtime")-z*3600000L).withColumn("eventtime", col("eventtime")-z*3600000L).withColumn("bintime", col("bintime") -z * 3600).withColumn("imsi",lit(col("imsi")-(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(gtpusagenew.rdd,gtpusageschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/gtpusage/roamertype=2/")
+}
+
+**** Daily **** 
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val gtpusage = spark.read.orc("/user/roamware/output/CRM/gtpusage/roamertype=2/");
+val gtpusageschema = gtpusage.schema;
+ 
+for( z <- 0 to 4)  {
+val gtpusagenew = gtpusage.withColumn("starttime", col("starttime")+z*86400000L).withColumn("endtime", col("endtime")+z*86400000L).withColumn("eventtime", col("eventtime")+z*86400000L).withColumn("bintime", col("bintime") +z * 86400).withColumn("imsi",lit(col("imsi")+(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(gtpusagenew.rdd,gtpusageschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/gtpusage_performance/roamertype=2/")
+}
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val gtpusage = spark.read.orc("/user/roamware/output/CRM/gtpusage/roamertype=2/");
+val gtpusageschema = gtpusage.schema;
+ 
+for( z <- 1 to 25)  {
+val gtpusagenew = gtpusage.withColumn("starttime", col("starttime")-z*86400000L).withColumn("endtime", col("endtime")-z*86400000L).withColumn("eventtime", col("eventtime")-z*86400000L).withColumn("bintime", col("bintime") -z * 86400).withColumn("imsi",lit(col("imsi")-(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(gtpusagenew.rdd,gtpusageschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/gtpusage_performance/roamertype=2/")
+}
+
+---- VOLTE Model ------
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val volte = spark.read.orc("/user/roamware/output/SSISQI/volte/roamertype=2/");
+val volteschema = volte.schema;
+ 
+for( z <- 1 to 111)  {
+val voltenew = volte.withColumn("starttime", col("starttime")+z*3600000L).withColumn("endtime", col("endtime")+z*3600000L).withColumn("eventtime", col("eventtime")+z*3600000L).withColumn("bintime", col("bintime") +z * 3600).withColumn("networktripid", col("networktripid")+z*3600000L).withColumn("countrytripid", col("countrytripid")+z*3600000L).withColumn("globaltripid", col("globaltripid")+z*3600000L).withColumn("imsi",lit(col("imsi")+(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(voltenew.rdd,volteschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/volte/roamertype=2/")
+}
+
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+val volte = spark.read.orc("/user/roamware/output/SSISQI/volte/roamertype=2/");
+val volteschema = volte.schema;
+ 
+for( z <- 0 to 608)  {
+val voltenew = volte.withColumn("starttime", col("starttime")-z*3600000L).withColumn("endtime", col("endtime")-z*3600000L).withColumn("eventtime", col("eventtime")-z*3600000L).withColumn("bintime", col("bintime") -z * 3600).withColumn("networktripid", col("networktripid")+z*3600000L).withColumn("countrytripid", col("countrytripid")+z*3600000L).withColumn("globaltripid", col("globaltripid")+z*3600000L).withColumn("imsi",lit(col("imsi")-(z*1)).cast("Long"));
+
+val result = spark.createDataFrame(voltenew.rdd,volteschema)
+result.write.mode("append").partitionBy("bintime").format("orc").save("/user/roamware/output/CRM/volte/roamertype=2/")
+}
