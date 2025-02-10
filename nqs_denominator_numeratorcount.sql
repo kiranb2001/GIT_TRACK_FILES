@@ -1,4 +1,4 @@
-,WITH labeled_score_daily_data AS (
+WITH labeled_score_daily_data AS (
     SELECT
         tripstatus,
         partnercountryid,
